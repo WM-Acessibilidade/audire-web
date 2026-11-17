@@ -22,3 +22,21 @@ Para desativar apenas o envio de convites, definir `AUDIRE_PREVIAS_EMAIL_HABILIT
 Os links usam assinatura HMAC com finalidade exclusiva, usando `AUDIRE_PREVIA_SECRET` ou, na ausência, o `ADMIN_TOKEN` existente. Alterar esse segredo invalida assinaturas antigas. Nenhum segredo é armazenado neste documento ou no frontend. Links e textos de revisão não devem ser registrados em logs.
 
 O token fica no fragmento do URL e é enviado ao servidor apenas por cabeçalho. As respostas de prévia são no-store/noindex. A revisão não modifica o roteiro original e não publica nem refaz áudio.
+
+
+## Prévias de repositórios — 17/11/2026
+
+Versões preservadas antes desta extensão:
+
+- Frontend `WM-Acessibilidade/audire-web`: branch `backup/estavel-2026-11-17-antes-previas-repositorios`, commit `f6d007b9e099f47110c6b30e3996369ffb3674e8`.
+- Backend `WM-Acessibilidade/audesc-events-api`: mesma branch de backup, commit `a9e820f4d63d49256c781c743d88830c190260d6`.
+
+Para reverter apenas esta extensão, restaurar em novos commits os arquivos alterados a partir desses commits; revisar mudanças posteriores antes de restaurar. Reverter primeiro o frontend e depois o backend. Nunca usar force-push.
+
+As novas tabelas `audire_previas_repositorios` e `audire_revisoes_repositorios` e a função `audire_salvar_revisao_repositorio` são aditivas e devem permanecer na reversão, com RLS e acesso restrito a `service_role`, para preservar as revisões recebidas. A versão anterior não as utiliza.
+
+Não alterar `AUDIRE_PREVIAS_EMAIL_HABILITADO`, as chaves do Resend, os remetentes ou a autenticação/SMTP do Supabase ao reverter esta extensão. Os convites individuais de roteiro continuam funcionando.
+
+O token do repositório usa a finalidade HMAC exclusiva `audire-previa-repositorio-v1`, no fragmento `#previarepo=` e no cabeçalho `x-audire-previa`. Ele autoriza somente a leitura desse repositório e de seus roteiros atualmente vinculados (inclusive rascunhos/ocultos). A permissão opcional de revisão permite salvar apenas `descricao`, em registro separado; nunca grava o original nem o texto de roteiros. Validade e revogação são verificadas em cada consulta, navegação e gravação. Links de roteiro e de repositório não são intercambiáveis.
+
+Validação: testes de autorização/escopo, revisão isolada, limite de 12.000 caracteres, conflitos de versão, expiração, revogação e envio simulado; testes das telas e regressão das prévias individuais. O teste SQL transacional verifica a função real e as restrições de acesso, revertendo todos os registros de teste.
