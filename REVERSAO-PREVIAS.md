@@ -40,3 +40,13 @@ Não alterar `AUDIRE_PREVIAS_EMAIL_HABILITADO`, as chaves do Resend, os remetent
 O token do repositório usa a finalidade HMAC exclusiva `audire-previa-repositorio-v1`, no fragmento `#previarepo=` e no cabeçalho `x-audire-previa`. Ele autoriza somente a leitura desse repositório e de seus roteiros atualmente vinculados (inclusive rascunhos/ocultos). A permissão opcional de revisão permite salvar apenas `descricao`, em registro separado; nunca grava o original nem o texto de roteiros. Validade e revogação são verificadas em cada consulta, navegação e gravação. Links de roteiro e de repositório não são intercambiáveis.
 
 Validação: testes de autorização/escopo, revisão isolada, limite de 12.000 caracteres, conflitos de versão, expiração, revogação e envio simulado; testes das telas e regressão das prévias individuais. O teste SQL transacional verifica a função real e as restrições de acesso, revertendo todos os registros de teste.
+
+## Revisão dos roteiros pelo link do repositório — 20/11/2026
+
+A permissão `permitir_revisao_roteiros` é independente de `permitir_revisao` (apresentação). Seu padrão é `false`, inclusive para links existentes. URLs, IDs, finalidade HMAC, segredo, validade e revogação continuam iguais. Revisões individuais existentes permanecem independentes.
+
+As novas revisões são isoladas por `(previa_id, roteiro_id)`, em `audire_revisoes_roteiros_repositorios`. O servidor e a função SQL verificam a vinculação atual do roteiro ao repositório. A função bloqueia alterações concorrentes de permissão e de vinculação durante a gravação. O revisor só salva texto; o original é aplicado manualmente no administrador do roteiro, pelo painel “Revisões recebidas pelo repositório”.
+
+Publicar nesta ordem: aplicar `audire-previas-repositorios-roteiros.sql` no banco do servidor; executar o teste SQL transacional correspondente; publicar o servidor; confirmar a nova rota; publicar o frontend. Não publicar o frontend antes do servidor. Os testes Node cobrem interface, API e compatibilidade dos links; não substituem o teste SQL real.
+
+Reversão: restaurar o frontend anterior e depois o servidor anterior em novos commits. Manter a coluna, a tabela e a função novas com RLS e grants restritos ao `service_role`, para preservar revisões recebidas. Não trocar segredos ou apagar links. Os dados adicionais são compatíveis com o código anterior.

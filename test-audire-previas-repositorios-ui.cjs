@@ -28,5 +28,23 @@ function dom(){const els=new Map(),created=[],links=[];function el(tag='div'){re
   vm.createContext(c);vm.runInContext(read('data/audire-previa-repositorio.js'),c);assert.equal(await win.AudirePreviaRepositorio.carregarRoteiro({render:r=>display=r}),code===200);assert.equal(p.created.some(e=>e.id==='previaApresentacaoEditor'),false);
   if(code===200){assert.equal(display.roteiro_texto,'Somente leitura');assert.match(p.document.getElementById('voltar').href,/repositorio.html\?id=repo#previarepo=token-teste/);assert.match(nav.href,/#previarepo=token-teste/);}else{assert.equal(display,null);assert.equal(p.document.getElementById('conteudo').hidden,true);}
  }
- console.log('Telas dos repositórios: comparação sem salvar automaticamente, preservação de edição local, bloqueio de criação com alterações pendentes, editor apenas na apresentação, navegação com token e erros sem exibir conteúdo passaram.');
+ for(const permitir of [undefined,false,true]){
+  const d=dom(),win={},calls=[];let saveCode=200;
+  const dados={previa:{permitir_revisao:true,permitir_revisao_roteiros:permitir,expira_em:link.expira_em},roteiro:{id:'roteiro',repositorio_id:'repo',roteiro_texto:'Original',atualizado_em:repo.atualizado_em},revisao:{texto_revisado:'Revisado',versao:2,base_atualizado_em:repo.atualizado_em}};
+  const c={window:win,document:d.document,URLSearchParams,URL,Date,location:{hash:'#previarepo=token-teste',search:'?id=roteiro',origin:'https://audire.pro',href:'https://audire.pro/roteiro.html?id=roteiro#previarepo=token-teste'},fetch:async(url,opt)=>{calls.push({url,opt});return{ok:saveCode===200,status:saveCode,json:async()=>opt.method?saveCode===200?{revisao:{...dados.revisao,texto_revisado:'Nova revisão',versao:3}}:{error:'Revisão indisponível'}:dados};}};
+  vm.createContext(c);vm.runInContext(read('data/audire-previa-repositorio.js'),c);let display;
+  assert.equal(await win.AudirePreviaRepositorio.carregarRoteiro({paragrafos:t=>t,render:r=>display=r}),true);assert.equal(display.roteiro_texto,'Revisado');assert.equal(d.created.some(e=>e.id==='previaEditor'),permitir===true);
+  if(permitir){const $=id=>d.document.getElementById(id);$('previaTexto').value='Nova revisão';await $('salvarRevisaoPrevia').onclick();assert.match(calls[1].url,/previa-repositorio\/roteiros\/roteiro\/revisao$/);assert.equal(calls[1].opt.headers['x-audire-previa'],'token-teste');assert.equal(JSON.parse(calls[1].opt.body).versao,2);assert.equal(dados.roteiro.roteiro_texto,'Original');assert.equal($('roteiroTexto').innerHTML,'Nova revisão');
+   saveCode=409;$('previaTexto').value='Edição pendente';await $('salvarRevisaoPrevia').onclick();assert.equal($('previaTexto').value,'Edição pendente');assert.equal($('salvarRevisaoPrevia').disabled,false);
+   saveCode=403;await $('salvarRevisaoPrevia').onclick();assert.equal($('salvarRevisaoPrevia').disabled,true);assert.equal($('previaTexto').readOnly,true);
+  }
+ }
+ {
+  const d=dom(),win={},r={id:'roteiro',repositorio_id:'repo',roteiro_texto:'Original'};let requests=0,acoes=0;
+  const c={window:win,document:d.document,Date,Event:class{}};vm.createContext(c);vm.runInContext(read('data/audire-revisoes-repositorio-roteiro-admin.js'),c);
+  const ctx={obterRoteiro:()=>r,atualizarAcoes:()=>acoes++,api:async()=>{requests++;return{revisoes:[{previa_id:'link',texto_revisado:'Revisão recebida',texto_base:'Original',versao:1,atualizado_em:repo.atualizado_em}]};}};
+  await win.AudireRevisoesRepositorioRoteiroAdmin.carregar(ctx);const $=id=>d.document.getElementById(id);$('revisaoRepositorioSelecionada').value='link';$('revisaoRepositorioSelecionada').onchange();$('texto').value='Edição pendente';$('aplicarRevisaoRepositorio').onclick();assert.equal($('texto').value,'Edição pendente');
+  $('texto').value='Original';$('aplicarRevisaoRepositorio').onclick();assert.equal($('texto').value,'Revisão recebida');assert.equal(r.roteiro_texto,'Original');assert.equal(requests,1);assert.equal(acoes,1);
+ }
+ console.log('Telas dos repositórios: comparação sem salvar automaticamente, preservação de edição local, bloqueio de criação com alterações pendentes, permissões independentes de apresentação e roteiros, revisão isolada e bloqueio após revogação, navegação com token e erros sem exibir conteúdo passaram.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
