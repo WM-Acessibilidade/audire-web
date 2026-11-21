@@ -1,5 +1,6 @@
 (function(){
   const categorias=[
+    {id:'ambientes-percursos',nome:'Ambientes e percursos'},
     {id:'exposicoes-artisticas',nome:'Exposições artísticas'},
     {id:'exposicoes-tematicas',nome:'Exposições temáticas'},
     {id:'filmes-series',nome:'Filmes e séries'},
