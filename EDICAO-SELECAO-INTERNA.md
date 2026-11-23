@@ -8,7 +8,7 @@ A mesma interface é montada no editor da narração carregada e na prévia WAV 
 - A área de transferência é compartilhada entre os dois editores na mesma página, e não persiste após fechar ou recarregar. A normalização usa o ganho comum de pico a -1 dBFS já existente, preservando a relação entre canais.
 - Inserir abre espaço. O trecho é adaptado à taxa de amostragem e aos canais do destino: mono é duplicado em destino estéreo; estéreo é reduzido pela média dos canais em destino mono. A duração total aumenta pela duração inserida, com arredondamento à amostra.
 - Baixar trecho usa o conversor autenticado já existente e permite MP3 ou Ogg/Opus, com as opções de bitrate e canais válidas de cada formato. Download e inserção mantêm o trecho disponível.
-- O botão Desfazer de cada editor recupera as edições da sua origem e o estado da transferência nas operações de recorte/normalização. O histórico é limitado por quantidade e orçamento de memória. O novo núcleo recusa saídas PCM maiores que 64 MB antes da alocação.
+- O botão Desfazer de cada editor recupera as edições da sua origem e o estado da transferência nas operações de recorte/normalização. O histórico é limitado por quantidade e orçamento de memória. O núcleo de seleção interna aceita saídas PCM de até 256 MiB, alinhadas ao limite intermediário do servidor. A validação ocorre antes da alocação e permite excluir trechos pequenos de narrações que continuam acima de 64 MiB após o corte. O carregamento do arquivo de origem permanece limitado a 128 MiB.
 - Campos rotulados, botões por teclado e regiões de status anunciam resultados e duração. Não foi feito teste com VoiceOver ou NVDA real nesta alteração.
 
 ## Validação
