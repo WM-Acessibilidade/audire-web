@@ -1,0 +1,31 @@
+'use strict';
+const {parseHTML}=require('linkedom'),fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const core=require('./data/audire-audio-edicao'),op=require('./data/audire-audio-opcoes');
+const {window}=parseHTML('<html><body><section><button id="upAudio"></button></section><div id="arquivoStatus"></div></body></html>'),document=window.document;
+const selectProto=Object.getPrototypeOf(document.createElement('select'));
+Object.defineProperty(selectProto,'value',{get(){return this.querySelector('option[selected]')?.value||this.querySelector('option')?.value||'';},set(v){for(const o of this.querySelectorAll('option')){if(o.value===String(v))o.setAttribute('selected','');else o.removeAttribute('selected');}}});
+let plays=0,pauses=0,writes=0,source;
+const mediaProto=Object.getPrototypeOf(document.createElement('audio'));
+mediaProto.pause=function(){pauses++;};mediaProto.play=async function(){plays++;};
+const wav=core.wav({sampleRate:8000,channels:[new Float32Array(30*8000).fill(.2),new Float32Array(30*8000).fill(.1)]});
+const sandbox={window:{AudireAudioEdicao:core,AudireAudioOpcoes:op},document,Blob,Float32Array,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}}};
+vm.createContext(sandbox);vm.runInContext(fs.readFileSync(__dirname+'/data/audire-narracao-editor.js','utf8'),sandbox);
+const editor=sandbox.window.AudireNarracaoEditor,$=id=>document.getElementById(id);
+editor.iniciar({obterRoteiro:()=>({id:'test'}),formatoPadrao:()=>({formato:'opus',bitrate_kbps:64}),antesDeCarregar(){},fonteAlterada:b=>source=b,fetch:async path=>{if(!path.endsWith('/preparar')){writes++;throw new Error('Não deve publicar.');}return{ok:true,arrayBuffer:async()=>wav};}});
+(async()=>{
+ await editor.carregarArquivo({name:'test.aiff',size:100});
+ const start=$('narracaoInicio'),end=$('narracaoFim'),player=$('narracaoAudio'),begin=$('narracaoOuvirInicio'),last=$('narracaoOuvirFim');
+ assert.equal(start.value,'');assert.equal(end.value,'');assert.equal(start.hasAttribute('placeholder'),false);assert.equal(end.hasAttribute('placeholder'),false);assert.equal(start.getAttribute('aria-describedby'),'narracaoTemposAjuda');
+ const original=new Uint8Array(await source.arrayBuffer());
+ await begin.onclick();assert.equal(player.currentTime,0);await last.onclick();assert.equal(player.currentTime,25);
+ start.value='00:10,500';end.value='00:22,250';await begin.onclick();assert.equal(player.currentTime,10.5);await last.onclick();assert.equal(player.currentTime,17.25);
+ let before=pauses;player.currentTime=22.5;player.ontimeupdate();assert.equal(pauses,before+1);assert.equal(player.currentTime,22.25);
+ start.value='12';end.value='';await begin.onclick();assert.equal(player.currentTime,12);await last.onclick();assert.equal(player.currentTime,25);
+ start.value='';end.value='8';await begin.onclick();assert.equal(player.currentTime,0);await last.onclick();assert.equal(player.currentTime,3);
+ start.value='20';end.value='22';await last.onclick();assert.equal(player.currentTime,20);
+ for(const [a,b] of [['abc','22'],['20','20'],['25','20'],['0','31'],['-1','10'],['NaN','10'],['1:60','']]){start.value=a;end.value=b;const count=plays;await begin.onclick();await last.onclick();assert.equal(plays,count);assert.ok($('narracaoStatus').textContent);assert.equal($('arquivoStatus').textContent,$('narracaoStatus').textContent);}
+ start.value='10';end.value='20';await begin.onclick();before=pauses;end.value='25';end.oninput();assert.equal(pauses,before+1);player.currentTime=26;player.ontimeupdate();assert.equal(player.currentTime,26);
+ assert.equal(writes,0);assert.deepEqual(new Uint8Array(await source.arrayBuffer()),original);
+ $('narracaoRestaurar').onclick();assert.equal(start.value,'');assert.equal(end.value,'');
+ console.log('Prévias: campos vazios, limites preenchidos ou parciais, trecho curto, parada no fim, validação acessível e áudio preservado: OK.');
+})().catch(e=>{console.error(e);process.exitCode=1;});
