@@ -7,6 +7,7 @@
  const urlRepo=id=>'repositorio.html?id='+encodeURIComponent(id)+fragmento();
  const urlRoteiro=(id,repo)=>'roteiro.html?id='+encodeURIComponent(id)+'&repositorio='+encodeURIComponent(repo)+fragmento();
  async function api(path,opt={}){
+  if(window.AudireRevisaoAcesso)return window.AudireRevisaoAcesso.api(path,opt,{tipo:'repositorio',token});
   const resp=await fetch('https://audesc-events-api.onrender.com'+path,{...opt,cache:'no-store',headers:{'Content-Type':'application/json','x-audire-previa':token,...(opt.headers||{})}});
   const j=await resp.json().catch(()=>({}));if(!resp.ok)throw Object.assign(new Error(j.error||'Não foi possível abrir a prévia.'),{status:resp.status});return j;
  }
